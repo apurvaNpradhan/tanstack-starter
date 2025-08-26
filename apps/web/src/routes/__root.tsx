@@ -3,11 +3,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import {
-	HeadContent,
-	Outlet,
-	Scripts,
-	createRootRouteWithContext,
-	useRouterState,
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRouteWithContext,
+  useRouterState,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import Header from "../components/header";
@@ -17,54 +17,66 @@ import Loader from "@/components/loader";
 
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import type { AppRouter } from "../../../server/src/routers";
+import { createServerFn } from "@tanstack/react-start";
+import { getWebRequest } from "@tanstack/react-start/server";
+import { authClient } from "@/lib/auth-client";
 export interface RouterAppContext {
-	trpc: TRPCOptionsProxy<AppRouter>;
-	queryClient: QueryClient;
+  trpc: TRPCOptionsProxy<AppRouter>;
+  queryClient: QueryClient;
 }
+const getServerSession = createServerFn({ method: "GET" }).handler(async () => {
+  const { headers } = getWebRequest()
+  const session = await authClient.getSession({
+    fetchOptions: {
+      headers,
+      query: {
+        disableCookieCache: true
+      }
+    }
 
+  }
+  )
+
+  return session
+}
+)
 export const Route = createRootRouteWithContext<RouterAppContext>()({
-	head: () => ({
-		meta: [
-			{
-				charSet: "utf-8",
-			},
-			{
-				name: "viewport",
-				content: "width=device-width, initial-scale=1",
-			},
-			{
-				title: "My App",
-			},
-		],
-		links: [
-			{
-				rel: "stylesheet",
-				href: appCss,
-			},
-		],
-	}),
+  beforeLoad: async () => {
+    const session = await getServerSession()
+    return {
+      session: session.data
+    }
+  },
+  head: () => ({
+    links: [
+      {
+        rel: "stylesheet",
+        href: appCss,
+      },
+    ],
+  }),
 
-	component: RootDocument,
+  component: RootDocument,
 });
 
 function RootDocument() {
-	const isFetching = useRouterState({ select: (s) => s.isLoading });
+  // const isFetching = useRouterState({ select: (s) => s.isLoading });
 
-	return (
-		<html lang="en" className="dark">
-			<head>
-				<HeadContent />
-			</head>
-			<body>
-				<div className="grid h-svh grid-rows-[auto_1fr]">
-					<Header />
-					{isFetching ? <Loader /> : <Outlet />}
-				</div>
-				<Toaster richColors />
-				<TanStackRouterDevtools position="bottom-left" />
-				<ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
-				<Scripts />
-			</body>
-		</html>
-	);
+  return (
+    <html lang="en" className="dark">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <div className="grid h-svh grid-rows-[auto_1fr]">
+          <Header />
+          <Outlet />
+        </div>
+        <Toaster richColors />
+        <TanStackRouterDevtools position="bottom-left" />
+        <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+        <Scripts />
+      </body>
+    </html>
+  );
 }
