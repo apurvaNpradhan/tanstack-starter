@@ -8,13 +8,14 @@ import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import { createTRPCClient, httpBatchLink, httpBatchStreamLink, loggerLink } from "@trpc/client";
+import { createTRPCClient, httpBatchLink, loggerLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { toast } from "sonner";
 import type { AppRouter } from "../../server/src/routers";
 import { TRPCProvider } from "./utils/trpc";
 import { createServerFn } from "@tanstack/react-start";
 import { getWebRequest } from "@tanstack/react-start/server";
+
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error) => {
@@ -31,18 +32,16 @@ export const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 60 * 1000 } },
 });
 
-
 const getRequestHeaders = createServerFn({ method: "GET" }).handler(
   async () => {
     const request = getWebRequest();
     const headers = new Headers(request.headers);
-
     return Object.fromEntries(headers);
   },
 );
+
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
-
     loggerLink({
       enabled: (op) =>
         process.env.NODE_ENV === "development" ||
@@ -51,15 +50,20 @@ const trpcClient = createTRPCClient<AppRouter>({
     httpBatchLink({
       url: `${import.meta.env.VITE_SERVER_URL}/trpc`,
       async fetch(url, options) {
+        const requestHeaders = await getRequestHeaders();
+
         return fetch(url, {
           ...options,
           credentials: "include",
-          headers:
-            await getRequestHeaders()
-
+          headers: {
+            'Content-Type': 'application/json',
+            ...requestHeaders,
+            ...options?.headers,
+          },
         });
       },
-      transformer: superjson
+      transformer: superjson,
+      maxURLLength: 2083,
     }),
   ],
 });

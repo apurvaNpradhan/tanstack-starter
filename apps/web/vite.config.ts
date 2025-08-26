@@ -8,7 +8,6 @@ export default defineConfig({
   plugins: [
     tsconfigPaths(),
     tailwindcss(),
-    tanstackStart({ target: "vercel", customViteReactPlugin: true }),
-    viteReact(),
+    tanstackStart({ target: "vercel", customViteReactPlugin: true }), viteReact(),
   ],
 });
